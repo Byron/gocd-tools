@@ -65,6 +65,9 @@
                 <variable secure="true">
                     <value/>
                 </variable>
+                <variable secure="true">
+                    <value/>
+                </variable>
                 <variable>
                     <value/>
                 </variable>
