@@ -1,8 +1,16 @@
 # GocdTools [![Build Status](https://travis-ci.org/Byron/gocd-tools.svg?branch=master)](https://travis-ci.org/Byron/gocd-tools)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/gocdtools`. To experiment with that code, run `bin/console` for an interactive prompt.
+This gem helps to maintain a [gocd][gocd] installation, and prevent it from becoming a snowflake when secure environment variables are involved.
 
-TODO: Delete this and the text above, and describe your gem
+Unfortunately, it's quite common to use the [GoCD][gocd] GUI of the production
+instance to adjust the configuration. In a second step, the resulting configuration file is 
+manually copied from the website, and placed under revision control, after manually sanitizing it.
+
+All manual steps are error prone, even if we would ignore the fact that one is basically operating at an open heart.
+
+Using the tools provided here, one can create a pipeline which supports local testing, with 
+manual steps reduced to the bare minimum.
+
 
 ## Installation
 
@@ -20,9 +28,9 @@ Or install it yourself as:
 
     $ gem install gocd-tools
 
-## Usage
+## Usage from within Vagrant
 
-TODO: Write usage instructions here
+TBD
 
 ## Development
 
@@ -39,3 +47,4 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/[USERN
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
 
+[gocd]: https://go.cd
