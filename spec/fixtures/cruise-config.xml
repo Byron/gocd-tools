@@ -62,11 +62,11 @@
             <mingle/>
             <timer/>
             <environmentvariables>
-                <variable secure="true">
-                    <value/>
+                <variable name='BAR' secure="true">
+                    <encryptedValue>ENCRYPTED</encryptedValue>
                 </variable>
-                <variable secure="true">
-                    <value/>
+                <variable name='COMMON' secure="true">
+                  <encryptedValue>ENCRYPTED</encryptedValue>
                 </variable>
                 <variable>
                     <value/>

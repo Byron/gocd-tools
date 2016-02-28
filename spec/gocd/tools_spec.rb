@@ -3,6 +3,7 @@ require 'rexml/document'
 require 'gocdtools'
 require 'tmpdir'
 require 'fileutils'
+require 'base64'
 
 describe GocdTools do
   it 'has a version number' do
@@ -10,7 +11,7 @@ describe GocdTools do
   end
 end
 
-module GocdTools  
+module GocdTools
   RSpec.describe 'sanitize()' do
     it 'will remove agents and secrets' do
       xml_stream = load_fixture_as_stream('cruise-config.xml')
@@ -58,7 +59,7 @@ module GocdTools
       end
       
       it 'throws if there is no secret' do
-        expect{@provider.secret_for variable: 'NOT_THERE'}.to raise_error StandardError
+        expect{@provider.secret_for variable: 'NOT_THERE'}.to raise_error StandardError, /Tried paths/
       end
       
       it 'provides pipeline specific secrets before common secrets' do
@@ -69,30 +70,51 @@ module GocdTools
         rela_path = File::join SecretsProvider::ANY, 'COMMON'
         expect(@provider.secret_for pipeline: 'foo', variable: 'COMMON').to eq rela_path
       end
+      
+      describe "reencrypt_secure_variables(..)" do
+        let(:xml_doc) {
+          xml_stream = load_fixture_as_stream('cruise-config.xml')
+          REXML::Document::new xml_stream
+        }
+        iv = new_iv
+        ENCRYPTED_MARKER = 'ENCRYPTED'
+        XENCRYPTED_VALUES = "//encryptedValue[contains(text(),'#{ENCRYPTED_MARKER}')]"
+        
+        it "will encrypt all secure variables" do
+          expect(element_count xml_doc, XENCRYPTED_VALUES).to eq 2  
+          GocdTools::reencrypt_secure_variables in_xml: xml_doc,
+                                                with_cipher_key: iv,
+                                                and_provider: @provider
+          expect(element_count xml_doc, '//encryptedValue').to eq 2
+          xml_doc.elements.each '//encryptedValue' do |e|
+            plain = Base64.decode64 e.text.to_s
+            expect(plain).not_to eq ENCRYPTED_MARKER
+            expect(des_decrypt plain, iv).to match(/.*\/[A-Z]+/)
+          end
+        end
+      end
     end
   end
   
   RSpec.describe 'DES' do
-    require 'openssl'
     include GocdTools
     
-    new_iv =  lambda { OpenSSL::Cipher::new('des').random_iv }
-    iv = new_iv.call
+    iv = new_iv
     
     VALUE = 'my fancy value'
     
     it 'can encrypt values' do
-      expect(des_encrypt VALUE, iv).not_to eq VALUE
+      expect(GocdTools::des_encrypt VALUE, iv).not_to eq VALUE
     end
     
     it 'can decrypt encrypted values with the same iv' do
-      encrypted = des_encrypt VALUE, iv
+      encrypted = GocdTools::des_encrypt VALUE, iv
       expect(des_decrypt encrypted, iv).to eq VALUE
     end
     
     it 'cannot decrypt encrypted values with different key' do
-      encrypted = des_encrypt VALUE, iv
-      expect(des_decrypt encrypted, new_iv.call).not_to eq VALUE
+      encrypted = GocdTools::des_encrypt VALUE, iv
+      expect(des_decrypt encrypted, new_iv).not_to eq VALUE
     end
   end
   
