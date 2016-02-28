@@ -1,5 +1,7 @@
 require 'gocdtools/version'
 require 'rexml/document'
+require 'openssl'
+
 
 module GocdTools
   # Provides secrets for environment variables by looking up their name in a directory on disk,
@@ -37,4 +39,20 @@ module GocdTools
     xml_doc.delete_element '//agent'
     xml_doc.delete_element '//environment'
   end  
+  
+  def des_encrypt(value, iv)
+    c = OpenSSL::Cipher::new('des')
+    c.encrypt
+    c.iv = iv
+    res = c.update value
+    res << c.final
+  end
+  
+  def des_decrypt(value, iv)
+    c = OpenSSL::Cipher::new('des')
+    c.decrypt
+    c.iv = iv
+    res = c.update value
+    res << c.final
+  end
 end

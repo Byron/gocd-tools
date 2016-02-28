@@ -71,4 +71,29 @@ module GocdTools
       end
     end
   end
+  
+  RSpec.describe 'DES' do
+    require 'openssl'
+    include GocdTools
+    
+    new_iv =  lambda { OpenSSL::Cipher::new('des').random_iv }
+    iv = new_iv.call
+    
+    VALUE = 'my fancy value'
+    
+    it 'can encrypt values' do
+      expect(des_encrypt VALUE, iv).not_to eq VALUE
+    end
+    
+    it 'can decrypt encrypted values with the same iv' do
+      encrypted = des_encrypt VALUE, iv
+      expect(des_decrypt encrypted, iv).to eq VALUE
+    end
+    
+    it 'cannot decrypt encrypted values with different key' do
+      encrypted = des_encrypt VALUE, iv
+      expect(des_decrypt encrypted, new_iv.call).not_to eq VALUE
+    end
+  end
+  
 end
