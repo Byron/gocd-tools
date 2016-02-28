@@ -109,11 +109,13 @@ module GocdTools
         it "writes_cipher_and_cruise_config_and_removes_it_on_process_done" do
           new_dir = File::join(@tmp_dir, 'yours-truly')
           pid = fork do
+            allow(GocdTools).to receive :reencrypt_secure_variables
             cipher_path, cruise_config_path =
             GocdTools::reencrypt_cruise_config_with_autocleanup(
                                       at: fixture_path('cruise-config.xml'),
                                       and_provider: @provider,
                                       into: new_dir)
+            expect(GocdTools).to have_received :reencrypt_secure_variables                            
             expect(File::exist? cipher_path).to be true
             expect(File::exist? cruise_config_path).to be true
             
