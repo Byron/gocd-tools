@@ -39,13 +39,13 @@ module GocdTools
         @tmp_dir = Dir::mktmpdir 
         
         [SecretsProvider::ANY, 'foo'].each do |subdir|
-          afp = File::join @tmp_dir, subdir
-          FileUtils::mkdir afp
           fn = 'BAR'
-          File::open(File::join(afp, fn), 'w') do |f|
-            f.write File::join subdir, fn
-          end
-         end
+          path = File::join @tmp_dir, subdir, fn
+          contents = File::join subdir, fn
+          write_file path, contents
+        end
+        rela_path = File::join(SecretsProvider::ANY, 'COMMON')
+        write_file File::join(@tmp_dir, rela_path), rela_path
         @provider = SecretsProvider::new @tmp_dir
       end
       
@@ -63,6 +63,11 @@ module GocdTools
       
       it 'provides pipeline specific secrets before common secrets' do
         expect(@provider.secret_for pipeline: 'foo', variable: 'BAR').to eq 'foo/BAR'
+      end
+      
+      it 'provides common secrets if there is no specific one, even if pipeline exists' do
+        rela_path = File::join SecretsProvider::ANY, 'COMMON'
+        expect(@provider.secret_for pipeline: 'foo', variable: 'COMMON').to eq rela_path
       end
     end
   end
