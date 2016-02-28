@@ -2,6 +2,7 @@ require 'gocdtools/version'
 require 'rexml/document'
 require 'openssl'
 require 'base64'
+require 'fileutils'
 
 module GocdTools
   # Provides secrets for environment variables by looking up their name in a directory on disk,
@@ -53,15 +54,9 @@ module GocdTools
     res << c.final
   end
   
-  def self.reencrypt_secure_variables(opts={})
-    required_args = :in_xml, :with_cipher_key, :and_provider
-    required_args.each do |arg|
-      if opts[arg].nil?
-        throw ArgumentError::new "Need argument #{arg} to be set"
-      end
-    end
-    
-    xml, iv, get = opts.values_at :in_xml, :with_cipher_key, :and_provider
+  M = '<ARGUMENT MUST BE SET>'
+  def self.reencrypt_secure_variables(in_xml: M, with_cipher_key: M, and_provider: M)
+    xml, iv, get = in_xml, with_cipher_key, and_provider
     xml.elements.each "//variable[@secure='true']" do |e|
       name = e.attribute 'name'
       secret = get.secret_for variable: name.to_s
@@ -70,5 +65,34 @@ module GocdTools
         encrypted_value.text = Base64.encode64 des_encrypt secret, iv
       end
     end
-  end 
+  end
+  
+  def self.reencrypt_cruise_config_with_autocleanup(at: M, and_provider: M, into: M)
+    if File::directory? into
+      throw ArgumentError::new "directory '#{into}' must not exist"
+    end
+    
+    FileUtils::mkdir into
+    
+    f = File::open at
+    xml = REXML::Document::new f
+    f.close
+    
+    iv = OpenSSL::Cipher::new('des').random_iv
+    reencrypt_secure_variables in_xml: xml, with_cipher_key: iv, and_provider: and_provider
+    
+    cfp = File::join into, 'cipher'
+    cf = File::new cfp, 'w'
+    cf.write iv.each_byte.map { |b| b.to_s 16 }.join
+    cf.close
+    
+    ccfp = File::join into, 'cruise-config.xml'
+    ccf = File::new ccfp, 'w'
+    xml.write ccf
+    ccf.close
+      
+    at_exit { FileUtils::rm_rf into }
+    
+    [cfp, ccfp]
+  end
 end

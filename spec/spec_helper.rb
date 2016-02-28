@@ -21,8 +21,12 @@ def element_count(xml, xpath)
   c
 end
 
+def fixture_path(path)
+  File.join(File::dirname(__FILE__), 'fixtures', path)
+end
+
 def load_fixture_as_stream(path)
-  File::open File.join(File::dirname(__FILE__), 'fixtures', path)
+  File::open fixture_path path
 end
 
 def write_file(path, contents)

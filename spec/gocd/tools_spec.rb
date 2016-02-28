@@ -71,7 +71,7 @@ module GocdTools
         expect(@provider.secret_for pipeline: 'foo', variable: 'COMMON').to eq rela_path
       end
       
-      describe "reencrypt_secure_variables(..)" do
+      context "and xml doc and cipher key do" do
         let(:xml_doc) {
           xml_stream = load_fixture_as_stream('cruise-config.xml')
           REXML::Document::new xml_stream
@@ -80,19 +80,51 @@ module GocdTools
         ENCRYPTED_MARKER = 'ENCRYPTED'
         XENCRYPTED_VALUES = "//encryptedValue[contains(text(),'#{ENCRYPTED_MARKER}')]"
         
-        it "will encrypt all secure variables" do
-          expect(element_count xml_doc, XENCRYPTED_VALUES).to eq 2  
-          GocdTools::reencrypt_secure_variables in_xml: xml_doc,
-                                                with_cipher_key: iv,
-                                                and_provider: @provider
-          expect(element_count xml_doc, '//encryptedValue').to eq 2
-          xml_doc.elements.each '//encryptedValue' do |e|
-            plain = Base64.decode64 e.text.to_s
-            expect(plain).not_to eq ENCRYPTED_MARKER
-            expect(des_decrypt plain, iv).to match(/.*\/[A-Z]+/)
+        describe "reencrypt_secure_variables(..)" do
+          it "will encrypt all secure variables" do
+            expect(element_count xml_doc, XENCRYPTED_VALUES).to eq 2  
+            GocdTools::reencrypt_secure_variables in_xml: xml_doc,
+                                                  with_cipher_key: iv,
+                                                  and_provider: @provider
+            expect(element_count xml_doc, '//encryptedValue').to eq 2
+            xml_doc.elements.each '//encryptedValue' do |e|
+              plain = Base64.decode64 e.text.to_s
+              expect(plain).not_to eq ENCRYPTED_MARKER
+              expect(des_decrypt plain, iv).to match(/.*\/[A-Z]+/)
+            end
           end
         end
       end
+      
+      describe "reencrypt_cruise_config_with_autocleanup()" do
+        it "needs its own directory (to delete safely on cleanup)" do
+          dir_exists = [ArgumentError, /.*directory.*must not exist.*/]
+          expect{
+            GocdTools::reencrypt_cruise_config_with_autocleanup(
+                                      at: fixture_path('cruise-config.xml'),
+                                      and_provider: @provider,
+                                      into: @tmp_dir) }.to raise_error(*dir_exists)
+        end
+        
+        it "writes_cipher_and_cruise_config_and_removes_it_on_process_done" do
+          new_dir = File::join(@tmp_dir, 'yours-truly')
+          pid = fork do
+            cipher_path, cruise_config_path =
+            GocdTools::reencrypt_cruise_config_with_autocleanup(
+                                      at: fixture_path('cruise-config.xml'),
+                                      and_provider: @provider,
+                                      into: new_dir)
+            expect(File::exist? cipher_path).to be true
+            expect(File::exist? cruise_config_path).to be true
+            
+            bin_cipher_key = File::read(cipher_path).scan(/../).map { |x| x.hex.chr }.join
+            expect(bin_cipher_key.size).to eq new_iv.size
+          end
+          Process.wait pid
+          expect(File::directory? new_dir).to be false
+        end
+      end
+      
     end
   end
   
