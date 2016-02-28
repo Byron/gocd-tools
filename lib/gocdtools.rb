@@ -79,6 +79,7 @@ module GocdTools
     f.close
     
     iv = OpenSSL::Cipher::new('des').random_iv
+    sanitize xml
     reencrypt_secure_variables in_xml: xml, with_cipher_key: iv, and_provider: and_provider
     
     cfp = File::join into, 'cipher'

@@ -110,17 +110,20 @@ module GocdTools
           new_dir = File::join(@tmp_dir, 'yours-truly')
           pid = fork do
             allow(GocdTools).to receive :reencrypt_secure_variables
+            allow(GocdTools).to receive :sanitize
+            
             cipher_path, cruise_config_path =
             GocdTools::reencrypt_cruise_config_with_autocleanup(
                                       at: fixture_path('cruise-config.xml'),
                                       and_provider: @provider,
                                       into: new_dir)
-            expect(GocdTools).to have_received :reencrypt_secure_variables                            
+            expect(GocdTools).to have_received :reencrypt_secure_variables                                
+            expect(GocdTools).to have_received :sanitize
             expect(File::exist? cipher_path).to be true
             expect(File::exist? cruise_config_path).to be true
             
             bin_cipher_key = File::read(cipher_path).scan(/../).map { |x| x.hex.chr }.join
-            expect(bin_cipher_key.size).to eq new_iv.size
+            expect(bin_cipher_key.size).to be_between(7, 8).inclusive
           end
           Process.wait pid
           expect(File::directory? new_dir).to be false
